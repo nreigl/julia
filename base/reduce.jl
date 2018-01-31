@@ -409,8 +409,8 @@ for (fname, _fname, op) in [(:sum,     :_sum,     :add_sum),
                             (:minimum, :_minimum, :min)]
     @eval begin
         # User-facing methods with keyword arguments
-        ($fname)(a; dims=:) = ($_fname)(a, dims)
-        ($fname)(f, a; dims=:) = ($_fname)(f, a, dims)
+        @inline ($fname)(a; dims=:) = ($_fname)(a, dims)
+        @inline ($fname)(f, a; dims=:) = ($_fname)(f, a, dims)
 
         # Underlying implementations using dispatch
         ($_fname)(a, ::Colon) = ($_fname)(identity, a, :)
