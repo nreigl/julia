@@ -486,11 +486,19 @@ end
     for arr in (se33, sA, pA)
         for f in (sum, prod, minimum, maximum, var)
             farr = Array(arr)
-            @test f(arr) ≈ f(farr)
-            @test f(arr, 1) ≈ f(farr, 1)
-            @test f(arr, 2) ≈ f(farr, 2)
-            @test f(arr, (1, 2)) ≈ [f(farr)]
-            @test isequal(f(arr, 3), f(farr, 3))
+            if f === sum
+                @test f(arr) ≈ f(farr)
+                @test f(arr, dims=1) ≈ f(farr, dims=1)
+                @test f(arr, dims=2) ≈ f(farr, dims=2)
+                @test f(arr, dims=(1, 2)) ≈ [f(farr)]
+                @test isequal(f(arr, dims=3), f(farr, dims=3))
+            else
+                @test f(arr) ≈ f(farr)
+                @test f(arr, 1) ≈ f(farr, 1)
+                @test f(arr, 2) ≈ f(farr, 2)
+                @test f(arr, (1, 2)) ≈ [f(farr)]
+                @test isequal(f(arr, 3), f(farr, 3))
+            end
         end
     end
 
@@ -582,9 +590,9 @@ end
     @test minimum(-P) === -3.0
     @test maximum(-P) === 0.0
 
-    @test maximum(P, (1,)) == [1.0 2.0 3.0]
-    @test maximum(P, (2,)) == reshape([1.0,2.0,3.0],3,1)
-    @test maximum(P, (1,2)) == reshape([3.0],1,1)
+    @test maximum(P, dims=(1,)) == [1.0 2.0 3.0]
+    @test maximum(P, dims=(2,)) == reshape([1.0,2.0,3.0],3,1)
+    @test maximum(P, dims=(1,2)) == reshape([3.0],1,1)
 
     @test maximum(sparse(fill(-1,3,3))) == -1
     @test minimum(sparse(fill(1,3,3))) == 1

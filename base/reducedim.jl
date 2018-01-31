@@ -82,7 +82,7 @@ reducedim_initarray(A::AbstractArray, region, v0::T) where {T} = reducedim_inita
 function reducedim_initarray0(A::AbstractArray{T}, region, f, ops) where T
     ri = reduced_indices0(A, region)
     if isempty(A)
-        if prod(map(length, reduced_indices(A, region))) != 0
+        if prod(length, reduced_indices(A, region)) != 0
             reducedim_initarray0_empty(A, region, f, ops) # ops over empty slice of A
         else
             R = f == identity ? T : Core.Compiler.return_type(f, (T,))
@@ -106,10 +106,10 @@ promote_union(T::Union) = promote_type(promote_union(T.a), promote_union(T.b))
 promote_union(T) = T
 
 function reducedim_init(f, op::Union{typeof(+),typeof(add_sum)}, A::AbstractArray, region)
-    _reducedim_init(f, op, zero, sum, A, region)
+    _reducedim_init(f, op, zero, _sum, A, region)
 end
 function reducedim_init(f, op::Union{typeof(*),typeof(mul_prod)}, A::AbstractArray, region)
-    _reducedim_init(f, op, one, prod, A, region)
+    _reducedim_init(f, op, one, _prod, A, region)
 end
 function _reducedim_init(f, op, fv, fop, A, region)
     T = promote_union(eltype(A))
@@ -124,8 +124,8 @@ function _reducedim_init(f, op, fv, fop, A, region)
     return reducedim_initarray(A, region, z, Tr)
 end
 
-reducedim_init(f, op::typeof(max), A::AbstractArray{T}, region) where {T} = reducedim_initarray0(A, region, f, maximum)
-reducedim_init(f, op::typeof(min), A::AbstractArray{T}, region) where {T} = reducedim_initarray0(A, region, f, minimum)
+reducedim_init(f, op::typeof(max), A::AbstractArray{T}, region) where {T} = reducedim_initarray0(A, region, f, _maximum)
+reducedim_init(f, op::typeof(min), A::AbstractArray{T}, region) where {T} = reducedim_initarray0(A, region, f, _minimum)
 reducedim_init(f::Union{typeof(abs),typeof(abs2)}, op::typeof(max), A::AbstractArray{T}, region) where {T} =
     reducedim_initarray(A, region, zero(f(zero(T))))
 
@@ -155,10 +155,10 @@ function check_reducedims(R, A)
     # Check whether R has compatible dimensions w.r.t. A for reduction
     #
     # It returns an integer value (useful for choosing implementation)
-    # - If it reduces only along leading dimensions, e.g. sum(A, 1) or sum(A, (1, 2)),
+    # - If it reduces only along leading dimensions, e.g. sum(A, dims=1) or sum(A, dims=(1,2)),
     #   it returns the length of the leading slice. For the two examples above,
     #   it will be size(A, 1) or size(A, 1) * size(A, 2).
-    # - Otherwise, e.g. sum(A, 2) or sum(A, (1, 3)), it returns 0.
+    # - Otherwise, e.g. sum(A, dims=2) or sum(A, dims=(1,3)), it returns 0.
     #
     ndims(R) <= ndims(A) || throw(DimensionMismatch("cannot reduce $(ndims(A))-dimensional array to $(ndims(R)) dimensions"))
     lsiz = 1
@@ -330,7 +330,7 @@ julia> sum(A, 2)
  7
 ```
 """
-sum(A::AbstractArray, dims)
+sum(A::AbstractArray; dims)
 
 """
     sum!(r, A)
@@ -378,7 +378,7 @@ julia> prod(A, 2)
  12
 ```
 """
-prod(A::AbstractArray, dims)
+prod(A::AbstractArray; dims)
 
 """
     prod!(r, A)
@@ -427,7 +427,7 @@ julia> maximum(A, 2)
  4
 ```
 """
-maximum(A, dims)
+maximum(A; dims)
 
 """
     maximum!(r, A)
@@ -477,7 +477,7 @@ julia> minimum(A, 2)
  3
 ```
 """
-minimum(A, dims)
+minimum(A; dims)
 
 """
     minimum!(r, A)
@@ -525,7 +525,7 @@ julia> all(A, 2)
   true
 ```
 """
-all(A::AbstractArray, dims)
+all(A::AbstractArray; dims)
 
 """
     all!(r, A)
@@ -573,7 +573,7 @@ julia> any(A, 2)
  true
 ```
 """
-any(::AbstractArray,dims)
+any(::AbstractArray; dims)
 
 """
     any!(r, A)
@@ -604,14 +604,15 @@ for (fname, op) in [(:sum, :add_sum), (:prod, :mul_prod),
                     (:maximum, :max), (:minimum, :min),
                     (:all, :&), (:any, :|)]
     fname! = Symbol(fname, '!')
+    _fname = Symbol('_', fname)
     @eval begin
         $(fname!)(f::Function, r::AbstractArray, A::AbstractArray; init::Bool=true) =
             mapreducedim!(f, $(op), initarray!(r, $(op), init, A), A)
         $(fname!)(r::AbstractArray, A::AbstractArray; init::Bool=true) = $(fname!)(identity, r, A; init=init)
 
-        $(fname)(f::Function, A::AbstractArray, region) =
+        $(_fname)(f::Function, A::AbstractArray, region) =
             mapreducedim(f, $(op), A, region)
-        $(fname)(A::AbstractArray, region) = $(fname)(identity, A, region)
+        $(_fname)(A::AbstractArray, region) = $(_fname)(identity, A, region)
     end
 end
 
